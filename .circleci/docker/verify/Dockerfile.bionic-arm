@@ -1,4 +1,4 @@
-FROM ubuntu:xenial
+FROM balenalib/aarch64-ubuntu:bionic-build
 WORKDIR /vpp
 RUN apt-get update;apt-get install -y make git sudo moreutils
 ADD ["./Makefile","/vpp"]

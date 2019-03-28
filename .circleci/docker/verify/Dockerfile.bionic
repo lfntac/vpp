@@ -1,0 +1,46 @@
+FROM ubuntu:bionic as build-deps
+WORKDIR /vpp
+RUN apt-get update;apt-get install -y make git sudo
+ADD ["./Makefile","/vpp"]
+ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
+RUN make UNATTENDED=yes install-dep
+
+FROM build-deps as build
+ARG PKG_VERSION
+ARG PKG_SUFFIX
+ENV PATH="/usr/lib/ccache/:${PATH}"
+ENV CC="/usr/lib/ccache/gcc"
+ENV CXX="/usr/lib/ccache/g++"
+ENV CCACHE_DIR=/vpp/build-root/.ccache
+ADD [".","/vpp"]
+RUN make UNATTENDED=yes install-ext-deps
+RUN make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+RUN make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+RUN make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+RUN make -C build-root PLATFORM=vpp TAG=vpp vom-install 
+RUN make pkg-deb
+RUN mkdir -p /vpp/pkg;cp /vpp/build-root/*.deb /vpp/pkg;cp /vpp/build-root/*.buildinfo /vpp/pkg
+
+
+FROM ubuntu:bionic as pkg
+COPY --from=build \
+    /vpp/pkg/ \
+    /pkg
+
+FROM ubuntu:bionic as run
+COPY --from=pkg /pkg /pkg
+RUN ls /pkg
+RUN cd /pkg && dpkg -i vpp_*.deb libvppinfra_*.deb vpp-plugins*.deb
+RUN rm -rf /pkg
+
+FROM build-deps as test
+COPY ["./test","/vpp/test"]
+COPY ["./src/vpp-api/python","/vpp/src/vpp-api/python"]
+WORKDIR /vpp/test
+RUN make test-dep
+COPY --from=pkg /pkg /pkg
+RUN ls /pkg
+RUN cd /pkg && dpkg -i vpp_*.deb libvppinfra_*.deb vpp-plugins*.deb
+RUN rm -rf /pkg
+
+

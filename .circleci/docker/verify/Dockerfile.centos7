@@ -1,6 +1,6 @@
-FROM ubuntu:xenial
+FROM centos:7.6.1810
 WORKDIR /vpp
-RUN apt-get update;apt-get install -y make git sudo moreutils
+RUN yum install -y cmake make sudo git moreutils
 ADD ["./Makefile","/vpp"]
 ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
 RUN make UNATTENDED=yes install-dep | ts

@@ -1,6 +1,6 @@
-FROM ubuntu:xenial
+FROM opensuse/leap:15.0
 WORKDIR /vpp
-RUN apt-get update;apt-get install -y make git sudo moreutils
+RUN zypper --non-interactive install make git sudo moreutils
 ADD ["./Makefile","/vpp"]
 ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
 RUN make UNATTENDED=yes install-dep | ts

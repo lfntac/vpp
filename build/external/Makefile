@@ -63,7 +63,7 @@ deb/debian/changelog: Makefile
 
 $(DEV_DEB): deb/debian/changelog
 	@cd deb && dpkg-buildpackage -b -uc -us
-	git clean -fdx deb
+	# git clean -fdx deb
 
 build-deb: $(DEV_DEB)
 

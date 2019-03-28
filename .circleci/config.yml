@@ -1,6 +1,7 @@
 version: 2
 jobs:
-  build:
+  build-xenial:
+    resource_class: xlarge
     docker:
       - image: circleci/golang:latest
     steps:
@@ -10,6 +11,183 @@ jobs:
       - run:
           name: Build vpp using Docker
           command: |
-            docker build . -f .circleci/docker/verify/Dockerfile.xenial
+            docker build . -f .circleci/docker/verify/Dockerfile.xenial -t vpp-build:${CIRCLE_SHA1:8:8}
+      - run:
+          name: Extract deb files
+          command: |
+            mkdir ~/artifacts
+            for debfile in $(docker run vpp-build:${CIRCLE_SHA1:8:8} ls /vpp/build-root/*.deb);do
+              docker run vpp-build:${CIRCLE_SHA1:8:8} cat ${debfile} > ~/artifacts/${debfile}
+            done
+      - store_artifacts:
+          path: ~/artifacts
 
+  build-bionic:
+    working_directory: ~/vpp
+    resource_class: xlarge
+    docker:
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Install ccache and moreutils
+          command: |
+            sudo apt-get update
+            sudo apt-get install ccache moreutils
+      - run:
+          name: Cache Prep
+          command: |
+            sudo mkdir -p ~/vpp/build-root/.ccache
+            sudo chown -R circleci:circleci ~/vpp/build-root/.ccache
+      - restore_cache:
+          keys:
+            - ccache-{{ arch }}-{{epoch}}
+            - ccache-{{ arch }}
+            - ccache-
+      - run:
+          name: ccache setup
+          command: |
+            export CCACHE_DIR=~/vpp/build-root/.ccache
+            ccache --version
+            ccache --show-stats
+            ccache --zero-stats
+            ccache --max-size=2G
 
+      - run:
+          name: Build vpp-build using Docker
+          command: |
+            export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
+            export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t vpp-build:${CIRCLE_SHA1:8:8} --shm-size 1024m --target build --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+      - run:
+          name: Build vpp-pkg using Docker
+          command: |
+            export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
+            export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t vpp-pkg:${CIRCLE_SHA1:8:8} --shm-size 1024m --target pkg --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+      - run:
+          name: Build vpp-run using Docker
+          command: |
+            export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
+            export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t vpp-run:${CIRCLE_SHA1:8:8} --shm-size 1024m --target run --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+      - run:
+          name: Build vpp-test using Docker
+          command: |
+            export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
+            export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t vpp-test:${CIRCLE_SHA1:8:8} --shm-size 1024m --target test --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+      - run:
+          name: Extract ccache
+          command: |
+            docker run -d --name=vppbuild-${CIRCLE_WORKFLOW_ID}  -rm vpp-build:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            sleep 5
+            time docker cp  vppbuild-${CIRCLE_WORKFLOW_ID}:/vpp/build-root/.ccache ${HOME}/vpp/build-root/
+            docker kill vppbuild-${CIRCLE_WORKFLOW_ID}
+      - run:
+          name: ccache stats
+          command: |
+            export CCACHE_DIR=~/vpp/build-root/.ccache
+            ccache --show-stats
+      - save_cache:
+          key: ccache-{{ arch }}-{{epoch}}
+          paths:
+            - ~/vpp/build-root/.ccache
+      - run:
+          name: Extract artifacts
+          command: |
+            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  -rm vpppkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            sleep 5
+            time docker cp  vpppkg-${CIRCLE_WORKFLOW_ID}:/pkg ${HOME}/artifacts/
+            docker kill vpppkg-${CIRCLE_WORKFLOW_ID}
+      - store_artifacts:
+          path: ~/artifacts
+      - run:
+          name: Intentional fail
+          command: |
+            exit 1
+  build-bionic-arm:
+    resource_class: xlarge
+    docker:
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Setup ARM qemu build
+          command: |
+            docker run --rm --privileged multiarch/qemu-user-static:register --reset
+      - run:
+          name: Build vpp using Docker
+          command: |
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic-arm -t vpp-build:${CIRCLE_SHA1:8:8}
+      - run:
+          name: Extract deb files
+          command: |
+            mkdir ~/artifacts
+            for debfile in $(docker run vpp-build:${CIRCLE_SHA1:8:8} ls /vpp/build-root/*.deb);do
+              docker run vpp-build:${CIRCLE_SHA1:8:8} cat ${debfile} > ~/artifacts/${debfile}
+            done
+      - store_artifacts:
+          path: ~/artifacts
+  build-centos7:
+    resource_class: xlarge
+    docker:
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build vpp using Docker
+          command: |
+            docker build . -f .circleci/docker/verify/Dockerfile.centos7
+  build-opensuse:
+    resource_class: xlarge
+    docker:
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build vpp using Docker
+          command: |
+            docker build . -f .circleci/docker/verify/Dockerfile.opensuse
+  checkstyle:
+    docker:
+      - image: circleci/buildpack-deps:bionic-scm
+    steps:
+      - checkout
+      - run:
+          name: Install checkstyle dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends indent clang-format git
+      - run:
+          name: Running Checkstyle
+          command: |
+            ./build-root/scripts/checkstyle.sh
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - checkstyle
+      # - build-xenial:
+      #     requires:
+      #       - checkstyle
+      # - build-centos7:
+      #     requires:
+      #       - checkstyle
+      # - build-opensuse:
+      #     requires:
+      #       - checkstyle
+      - build-bionic:
+          requires:
+            - checkstyle
+      # - build-bionic-arm:
+      #     requires:
+      #       - checkstyle

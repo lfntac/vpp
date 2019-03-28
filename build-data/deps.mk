@@ -49,6 +49,7 @@ else
 	RPM_DEPENDS += python-devel python34-ply
 	RPM_DEPENDS += python34-devel python34-pip
 	RPM_DEPENDS += python-virtualenv
+	RPM_DEPENDS += python-ply
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -61,12 +62,12 @@ RPM_DEPENDS += chrpath libffi-devel rpm-build
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply gcc-c++
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
-RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel bison lsb-release
 
-RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
+RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip python2-ply
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
 
 RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build

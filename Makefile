@@ -161,7 +161,7 @@ help:
 
 $(BR)/.deps.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
-	make install-dep
+	+make install-dep
 endif
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
@@ -427,7 +427,7 @@ dpdk-install-dev:
 	make -C build/external install-$(PKG)
 
 install-ext-deps:
-	make -C build/external install-$(PKG)
+	+make -C build/external install-$(PKG)
 
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<
@@ -485,16 +485,16 @@ docs-clean:
 
 verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
-	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+	+$(MAKE) -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
-	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+	+$(MAKE)  -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
-	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+	+$(MAKE)  -C build-root PLATFORM=vpp TAG=vpp libmemif-install
 	$(call banner,"Building VOM")
-	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
+	+$(MAKE)  -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
-	@make pkg-$(PKG)
+	+$(MAKE)  pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
 	$(call banner,"Running tests")
-	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+	$(MAKE) COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 endif
