@@ -30,7 +30,7 @@ COPY --from=build \
 FROM ubuntu:bionic as run
 COPY --from=pkg /pkg /pkg
 RUN ls /pkg
-RUN cd /pkg && dpkg -i vpp_*.deb libvppinfra_*.deb vpp-plugins*.deb
+RUN cd /pkg && dpkg -i vpp_*.deb libvppinfra_*.deb vpp-plugin*.deb
 RUN rm -rf /pkg
 
 FROM build-deps as test
@@ -40,7 +40,7 @@ WORKDIR /vpp/test
 RUN make test-dep
 COPY --from=pkg /pkg /pkg
 RUN ls /pkg
-RUN cd /pkg && dpkg -i vpp_*.deb libvppinfra_*.deb vpp-plugins*.deb
+RUN cd /pkg && dpkg -i vpp_*.deb libvppinfra_*.deb vpp-plugin*.deb
 RUN rm -rf /pkg
 
 
