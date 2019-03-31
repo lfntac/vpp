@@ -70,7 +70,7 @@ jobs:
       - run:
           name: Extract ccache
           command: |
-            docker run -d --name=vppbuild-${CIRCLE_WORKFLOW_ID}  -rm vpp-build:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            docker run -d --name=vppbuild-${CIRCLE_WORKFLOW_ID}  --rm vpp-build:${CIRCLE_SHA1:8:8} tail -f /dev/null &
             sleep 5
             time docker cp  vppbuild-${CIRCLE_WORKFLOW_ID}:/vpp/build-root/.ccache ${HOME}/vpp/build-root/
             docker kill vppbuild-${CIRCLE_WORKFLOW_ID}
@@ -86,7 +86,7 @@ jobs:
       - run:
           name: Extract artifacts
           command: |
-            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  -rm vpppkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  --rm vpppkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
             sleep 5
             time docker cp  vpppkg-${CIRCLE_WORKFLOW_ID}:/pkg ${HOME}/artifacts/
             docker kill vpppkg-${CIRCLE_WORKFLOW_ID}
