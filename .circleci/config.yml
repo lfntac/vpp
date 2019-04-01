@@ -53,7 +53,7 @@ jobs:
             ccache --version
             ccache --show-stats
             ccache --zero-stats
-            ccache --max-size=2G
+            ccache --max-size=1G
 
       - run:
           name: Build vpp-build using Docker
@@ -61,12 +61,6 @@ jobs:
             export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
             export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
             docker build . -f .circleci/docker/verify/Dockerfile.bionic -t fdio/vpp-build:${CIRCLE_SHA1:8:8} --shm-size 1024m --target build --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
-      - run:
-          name: Build vpp-pkg using Docker
-          command: |
-            export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
-            export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
-            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t fdio/vpp-pkg:${CIRCLE_SHA1:8:8} --shm-size 1024m --target pkg --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
       - run:
           name: Extract ccache
           command: |
@@ -86,9 +80,9 @@ jobs:
       - run:
           name: Extract artifacts
           command: |
-            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  fdio/vpp-pkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  fdio/vpp-build:${CIRCLE_SHA1:8:8} tail -f /dev/null &
             sleep 5
-            time docker cp  vpppkg-${CIRCLE_WORKFLOW_ID}:/pkg ${HOME}/artifacts/
+            time docker cp  vpppkg-${CIRCLE_WORKFLOW_ID}:/vpp/pkg ${HOME}/artifacts/
             docker kill vpppkg-${CIRCLE_WORKFLOW_ID}
       - store_artifacts:
           path: ~/artifacts
