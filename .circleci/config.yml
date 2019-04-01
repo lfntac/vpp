@@ -86,7 +86,7 @@ jobs:
       - run:
           name: Extract artifacts
           command: |
-            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  fdio/vpppkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  fdio/vpp-pkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
             sleep 5
             time docker cp  vpppkg-${CIRCLE_WORKFLOW_ID}:/pkg ${HOME}/artifacts/
             docker kill vpppkg-${CIRCLE_WORKFLOW_ID}
