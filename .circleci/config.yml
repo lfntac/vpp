@@ -60,17 +60,17 @@ jobs:
           command: |
             export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
             export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
-            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t vpp-build:${CIRCLE_SHA1:8:8} --shm-size 1024m --target build --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t fdio/vpp-build:${CIRCLE_SHA1:8:8} --shm-size 1024m --target build --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
       - run:
           name: Build vpp-pkg using Docker
           command: |
             export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
             export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
-            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t vpp-pkg:${CIRCLE_SHA1:8:8} --shm-size 1024m --target pkg --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+            docker build . -f .circleci/docker/verify/Dockerfile.bionic -t fdio/vpp-pkg:${CIRCLE_SHA1:8:8} --shm-size 1024m --target pkg --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
       - run:
           name: Extract ccache
           command: |
-            docker run -d --name=vppbuild-${CIRCLE_WORKFLOW_ID}  --rm vpp-build:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            docker run -d --name=vppbuild-${CIRCLE_WORKFLOW_ID} fdio/vpp-build:${CIRCLE_SHA1:8:8} tail -f /dev/null &
             sleep 5
             time docker cp  vppbuild-${CIRCLE_WORKFLOW_ID}:/vpp/build-root/.ccache ${HOME}/vpp/build-root/
             docker kill vppbuild-${CIRCLE_WORKFLOW_ID}
@@ -86,7 +86,7 @@ jobs:
       - run:
           name: Extract artifacts
           command: |
-            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  --rm vpppkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
+            docker run -d --name=vpppkg-${CIRCLE_WORKFLOW_ID}  fdio/vpppkg:${CIRCLE_SHA1:8:8} tail -f /dev/null &
             sleep 5
             time docker cp  vpppkg-${CIRCLE_WORKFLOW_ID}:/pkg ${HOME}/artifacts/
             docker kill vpppkg-${CIRCLE_WORKFLOW_ID}
