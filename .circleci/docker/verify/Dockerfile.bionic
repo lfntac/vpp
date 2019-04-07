@@ -8,12 +8,13 @@ RUN make UNATTENDED=yes install-dep
 FROM build-deps as build
 ARG PKG_VERSION
 ARG PKG_SUFFIX
+ADD ["./build/external","/vpp/build/external"]
+RUN make UNATTENDED=yes install-ext-deps
 ENV PATH="/usr/lib/ccache/:${PATH}"
 ENV CC="/usr/lib/ccache/gcc"
 ENV CXX="/usr/lib/ccache/g++"
 ENV CCACHE_DIR=/vpp/build-root/.ccache
 ADD [".","/vpp"]
-RUN make UNATTENDED=yes install-ext-deps
 RUN make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 RUN make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 RUN make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
