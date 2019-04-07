@@ -1,11 +1,9 @@
-FROM ubuntu:bionic as build-deps
+FROM ubuntu:bionic as build
 WORKDIR /vpp
 RUN apt-get update;apt-get install -y make git sudo
 ADD ["./Makefile","/vpp"]
 ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
 RUN make UNATTENDED=yes install-dep
-
-FROM build-deps as build
 ARG PKG_VERSION
 ARG PKG_SUFFIX
 ADD ["./build/external","/vpp/build/external"]
