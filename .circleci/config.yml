@@ -38,8 +38,17 @@ jobs:
     parameters:
       dockerfile:
         type: string
+        default: .circleci/docker/verify/Dockerfile.build
       tag: 
         type: string
+        default: fdio/vpp-build:${CIRCLE_SHA1:8:8}
+      build-image:
+        type: string
+      bootstrap-cmd:
+        type: string
+      pkg-type:
+        type: string
+        default: deb
     working_directory: ~/vpp
     resource_class: xlarge
     docker:
@@ -60,6 +69,7 @@ jobs:
             sudo chown -R circleci:circleci ~/vpp/build-root/.ccache
       - restore_cache:
           keys:
+            - ccache-{{ arch }}-{{.Environment.CIRCLE_JOB}}-{{epoch}}
             - ccache-{{ arch }}-{{epoch}}
             - ccache-{{ arch }}
             - ccache-
@@ -77,7 +87,16 @@ jobs:
           command: |
             export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
             export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
-            docker build . -f <<parameters.dockerfile>> -t <<parameters.tag>> --shm-size 1024m --target build --build-arg PKG_SUFFIX=${PKG_SUFFIX} --build-arg PKG_VERSION=${PKG_VERSION}| ts -i "%.s" | ts -s "%H:%M:%.S"
+            docker build . -f <<parameters.dockerfile>> \
+              -t <<parameters.tag>> \
+              --shm-size 1024m \
+              --target build \
+              --build-arg PKG_SUFFIX=${PKG_SUFFIX} \
+              --build-arg PKG_VERSION=${PKG_VERSION} \
+              --build-arg BUILD_IMAGE=<< parameters.build-image >> \
+              --build-arg BOOTSTRAP_CMD="<< parameters.bootstrap-cmd >>" \
+              --build-arg PKG_TYPE=<< parameters.pkg-type >> \
+              | ts -i "%.s" | ts -s "%H:%M:%.S"
       - extract:
           container: <<parameters.tag>>
           srcdir: /vpp/build-root/.ccache
@@ -88,7 +107,7 @@ jobs:
             export CCACHE_DIR=~/vpp/build-root/.ccache
             ccache --show-stats
       - save_cache:
-          key: ccache-{{ arch }}-{{epoch}}
+          key: ccache-{{ arch }}-{{.Environment.CIRCLE_JOB}}-{{epoch}}
           paths:
             - ~/vpp/build-root/.ccache
       - extract:
@@ -104,7 +123,7 @@ workflows:
       - checkstyle
       - build:
           name: build-bionic
-          tag: fdio/vpp-build:${CIRCLE_SHA1:8:8}
-          dockerfile: .circleci/docker/verify/Dockerfile.bionic
+          build-image: ubuntu:bionic
+          bootstrap-cmd: apt-get update && apt-get install -y make git sudo
           requires:
             - checkstyle

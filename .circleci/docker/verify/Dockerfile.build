@@ -1,0 +1,27 @@
+ARG BUILD_IMAGE
+FROM ${BUILD_IMAGE} as build
+WORKDIR /vpp
+ARG BOOTSTRAP_CMD
+RUN eval "${BOOTSTRAP_CMD}"
+ADD ["./Makefile","/vpp"]
+ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
+RUN make UNATTENDED=yes install-dep
+ARG PKG_VERSION
+ARG PKG_SUFFIX
+ADD ["./build/external","/vpp/build/external"]
+RUN make UNATTENDED=yes install-ext-deps
+ENV PATH="/usr/lib/ccache/:${PATH}"
+ENV CC="/usr/lib/ccache/gcc"
+ENV CXX="/usr/lib/ccache/g++"
+ENV CCACHE_DIR=/vpp/build-root/.ccache
+ARG PKG_TYPE
+ADD [".","/vpp"]
+RUN make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+RUN make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+RUN make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+RUN make -C build-root PLATFORM=vpp TAG=vpp vom-install 
+RUN make pkg-${PKG_TYPE}
+RUN mkdir -p /vpp/pkg;cp /vpp/build-root/*.deb /vpp/pkg;cp /vpp/build-root/*.buildinfo /vpp/pkg
+
+
+
