@@ -49,6 +49,9 @@ jobs:
       pkg-type:
         type: string
         default: deb
+      crosscompile:
+        type: boolean
+        default: false
     working_directory: ~/vpp
     resource_class: xlarge
     docker:
@@ -81,7 +84,13 @@ jobs:
             ccache --show-stats
             ccache --zero-stats
             ccache --max-size=2G
-
+      - when:
+          condition: << parameters.crosscompile >>
+          steps:
+            - run:
+                name: Setup Docker crosscompile
+                command: |
+                  docker run --rm --privileged multiarch/qemu-user-static:register --reset
       - run:
           name: Build vpp-build using Docker
           command: |
@@ -127,3 +136,23 @@ workflows:
           bootstrap-cmd: apt-get update && apt-get install -y make git sudo
           requires:
             - checkstyle
+      - build:
+          name: build-centos7
+          build-image: centos:7.6.1810
+          bootstrap-cmd: yum install -y cmake make sudo git moreutils;mkdir -p /usr/lib;ln -s /usr/lib64/ccache /usr/lib/ccache
+          requires:
+            - checkstyle
+      - build:
+          name: build-opensuse
+          build-image: opensuse/leap:15.0
+          bootstrap-cmd: zypper --non-interactive install make git sudo moreutils
+          requires:
+            - checkstyle
+      - build:
+          name: build-arm-bionic
+          build-image: balenalib/aarch64-ubuntu:bionic-build
+          bootstrap-cmd: apt-get update && apt-get install -y make git sudo
+          crosscompile: true
+          requires:
+            - checkstyle
+      

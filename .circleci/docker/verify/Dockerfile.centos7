@@ -1,8 +1,0 @@
-FROM centos:7.6.1810
-WORKDIR /vpp
-RUN yum install -y cmake make sudo git moreutils
-ADD ["./Makefile","/vpp"]
-ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
-RUN make UNATTENDED=yes install-dep | ts
-ADD [".","/vpp"]
-RUN make -j 16 UNATTENDED=yes verify | ts

@@ -107,7 +107,7 @@ $(DEV_RPM): Makefile rpm/vpp-ext-deps.spec
 	  --define "_release $(PKG_SUFFIX)" \
 	  $(CURDIR)/rpm/vpp-ext-deps.spec
 	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
-	@git clean -fdx rpm
+#	@git clean -fdx rpm
 
 build-rpm: $(DEV_RPM)
 
