@@ -1139,7 +1139,7 @@ package_wipe_script =											\
 # Wipe entire build/install area for TAG and PLATFORM
 .PHONY: wipe-all
 wipe-all:
-	@$(call build_msg_fn, Wiping $(BUILD_DIR) $(INSTALL_DIR)) ;	\
+	$(call build_msg_fn, Wiping $(BUILD_DIR) $(INSTALL_DIR)) ;	\
 	$(BUILD_ENV) ;							\
 	rm -rf $(BUILD_DIR) $(INSTALL_DIR)
 
