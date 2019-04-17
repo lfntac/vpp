@@ -29,7 +29,13 @@ jobs:
       - run: mkdir terraform
       - run: ssh-keygen -t rsa -f terraform/sshkey -q -N ""
       - run: ssh-add terraform/sshkey
-      - run: .circleci/provision.sh
+      - run:
+          name: Provision via terraform
+          command: |
+            pushd .circleci/terraform
+            terraform init
+            terraform apply ${TF_PACKET_VARS}
+            popd
       - run: cp -a scripts/terraform/ terraform/
       - run:
           when: on_fail
@@ -48,7 +54,12 @@ jobs:
           key: terraform-{{.Environment.CIRCLE_WORKFLOW_ID}}
       - run: cp -a /home/circleci/project/terraform/terraform/* ./scripts/terraform/
       - run: cd ./scripts/terraform && terraform init && cd ../..
-      - run: .circleci/destroy-cluster.sh
+      - run:
+          name: Destroy Packet Worker
+          command: |
+            pushd .circleci/terraform
+            terraform destroy ${TF_PACKET_VARS}
+            popd
   build:
     parameters:
       dockerfile:
