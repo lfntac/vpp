@@ -17,7 +17,7 @@ resource "packet_ssh_key" "key" {
 }
 
 resource "packet_device" "worker" {
-  hostname         = "${var.master1_hostname}"
+  hostname         = "${var.worker_hostname}"
   facilities       = ["sjc1"]
   plan             = "t1.small.x86"
   operating_system = "ubuntu_16_04"
@@ -27,6 +27,6 @@ resource "packet_device" "worker" {
 }
 
 output "worker.public_ip" {
-  value = "${packet_device.master1.access_public_ipv4}"
+  value = "${packet_device.worker.access_public_ipv4}"
 }
 
