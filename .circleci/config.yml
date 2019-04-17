@@ -1,0 +1,106 @@
+version: 2.1
+
+
+jobs:
+  checkstyle:
+    docker:
+      - image: circleci/buildpack-deps:bionic-scm
+    steps:
+      - checkout
+      - run:
+          name: Install checkstyle dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends indent clang-format git
+      - run:
+          name: Running Checkstyle
+          command: |
+            ./build-root/scripts/checkstyle.sh
+  packet-deploy:
+    docker:
+      - image: circleci/golang
+    steps:
+      - checkout
+      - run: pwd
+      - run: ls
+      - run: wget https://releases.hashicorp.com/terraform/0.11.13/terraform_0.11.13_linux_amd64.zip
+      - run: unzip terraform_0.11.13_linux_amd64.zip
+      - run: mv terraform /go/bin/
+      - run: mkdir terraform
+      - run: ssh-keygen -t rsa -f terraform/sshkey -q -N ""
+      - run: ssh-add terraform/sshkey
+      - run: .circleci/provision.sh
+      - run: cp -a scripts/terraform/ terraform/
+      - run:
+          when: on_fail
+          command: .circleci/destroy-cluster.sh
+      - save_cache:
+          key: terraform-{{.Environment.CIRCLE_WORKFLOW_ID}}
+          paths:
+            - /go/bin/terraform
+            - terraform
+  packet-destroy:
+    docker:
+      - image: circleci/golang
+    steps:
+      - checkout
+      - restore_cache:
+          key: terraform-{{.Environment.CIRCLE_WORKFLOW_ID}}
+      - run: cp -a /home/circleci/project/terraform/terraform/* ./scripts/terraform/
+      - run: cd ./scripts/terraform && terraform init && cd ../..
+      - run: .circleci/destroy-cluster.sh
+  build:
+    parameters:
+      dockerfile:
+        type: string
+        default: .circleci/docker/verify/Dockerfile.build
+      tag: 
+        type: string
+        default: fdio/vpp-build:${CIRCLE_SHA1:8:8}
+      build-image:
+        type: string
+      bootstrap-cmd:
+        type: string
+      pkg-type:
+        type: string
+        default: deb
+      crosscompile:
+        type: boolean
+        default: false
+    working_directory: ~/vpp
+    docker:
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - restore_cache:
+          key: terraform-{{.Environment.CIRCLE_WORKFLOW_ID}}
+      - run:
+          name: Add packet ssh key
+          command: |
+            ssh-add terraform/sshkey
+      - run:
+          name: Push tree to packet node
+          command: |
+            scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no  ~/vpp root@`terraform output worker.public_ip`:/vpp
+      - run:
+          name: Check git
+          command: |
+            ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "cd ~/vpp;git status"
+workflows:
+  build-and-test:
+    jobs:
+      - checkstyle
+      - build:
+          name: build-bionic
+          build-image: ubuntu:bionic
+          bootstrap-cmd: apt-get update && apt-get install -y make git sudo
+          requires:
+            - checkstyle
+            - packet-deploy
+      - packet-deploy:
+          requires:
+            - checkstyle
+      # - packet-destroy:
+      #     requires:
+      #       - packet-deploy
+      #       - build
