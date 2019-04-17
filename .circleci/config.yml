@@ -39,7 +39,7 @@ jobs:
             export TF_VAR_worker_hostname="ci-${CIRCLE_BUILD_NUM}-worker"
             pushd .circleci/terraform
             terraform init
-            terraform apply ${TF_PACKET_VARS}
+            terraform apply -auto-approve
             popd
       - run: cp -a scripts/terraform/ terraform/
       - run:
@@ -63,7 +63,7 @@ jobs:
           name: Destroy Packet Worker
           command: |
             pushd .circleci/terraform
-            terraform destroy ${TF_PACKET_VARS}
+            terraform destroy -auto-approve
             popd
   build:
     parameters:
