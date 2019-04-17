@@ -63,7 +63,7 @@ deb/debian/changelog: Makefile
 
 $(DEV_DEB): deb/debian/changelog
 	@cd deb && dpkg-buildpackage -b -uc -us
-	git clean -fdx deb
+	# git clean -fdx deb
 
 build-deb: $(DEV_DEB)
 
@@ -107,7 +107,7 @@ $(DEV_RPM): Makefile rpm/vpp-ext-deps.spec
 	  --define "_release $(PKG_SUFFIX)" \
 	  $(CURDIR)/rpm/vpp-ext-deps.spec
 	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
-	@git clean -fdx rpm
+#	@git clean -fdx rpm
 
 build-rpm: $(DEV_RPM)
 

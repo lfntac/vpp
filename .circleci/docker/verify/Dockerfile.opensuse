@@ -1,0 +1,8 @@
+FROM opensuse/leap:15.0
+WORKDIR /vpp
+RUN zypper --non-interactive install make git sudo moreutils
+ADD ["./Makefile","/vpp"]
+ADD ["./build-data/deps.mk","/vpp/build-data/deps.mk"]
+RUN make UNATTENDED=yes install-dep | ts
+ADD [".","/vpp"]
+RUN make -j 16 UNATTENDED=yes verify | ts

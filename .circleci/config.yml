@@ -1,6 +1,59 @@
-version: 2
+version: 2.1
+
+commands:
+  extract:
+    parameters:
+      container:
+        type: string
+      srcdir:
+        type: string
+      dstdir:
+        type: string
+    steps:
+      - run:
+          name: Extracting << parameters.srcdir >> from << parameters.container >> to << parameters.dstdir >>
+          command: |
+            docker run -d --name=extract-container << parameters.container >> tail -f /dev/null &
+            sleep 2
+            time docker cp  extract-container:<< parameters.srcdir >> << parameters.dstdir >>
+            docker kill extract-container
+            docker rm extract-container
+
 jobs:
+  checkstyle:
+    docker:
+      - image: circleci/buildpack-deps:bionic-scm
+    steps:
+      - checkout
+      - run:
+          name: Install checkstyle dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends indent clang-format git
+      - run:
+          name: Running Checkstyle
+          command: |
+            ./build-root/scripts/checkstyle.sh
   build:
+    parameters:
+      dockerfile:
+        type: string
+        default: .circleci/docker/verify/Dockerfile.build
+      tag: 
+        type: string
+        default: fdio/vpp-build:${CIRCLE_SHA1:8:8}
+      build-image:
+        type: string
+      bootstrap-cmd:
+        type: string
+      pkg-type:
+        type: string
+        default: deb
+      crosscompile:
+        type: boolean
+        default: false
+    working_directory: ~/vpp
+    resource_class: xlarge
     docker:
       - image: circleci/golang:latest
     steps:
@@ -8,8 +61,98 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
-          name: Build vpp using Docker
+          name: Install ccache and moreutils
           command: |
-            docker build . -f .circleci/docker/verify/Dockerfile.xenial
+            sudo apt-get update
+            sudo apt-get install ccache moreutils
+      - run:
+          name: Cache Prep
+          command: |
+            sudo mkdir -p ~/vpp/build-root/.ccache
+            sudo chown -R circleci:circleci ~/vpp/build-root/.ccache
+      - restore_cache:
+          keys:
+            - ccache-{{ arch }}-{{.Environment.CIRCLE_JOB}}-{{epoch}}
+            - ccache-{{ arch }}-{{epoch}}
+            - ccache-{{ arch }}
+            - ccache-
+      - run:
+          name: ccache setup
+          command: |
+            export CCACHE_DIR=~/vpp/build-root/.ccache
+            ccache --version
+            ccache --show-stats
+            ccache --zero-stats
+            ccache --max-size=2G
+      - when:
+          condition: << parameters.crosscompile >>
+          steps:
+            - run:
+                name: Setup Docker crosscompile
+                command: |
+                  docker run --rm --privileged multiarch/qemu-user-static:register --reset
+      - run:
+          name: Build vpp-build using Docker
+          command: |
+            export PKG_VERSION=$(git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
+            export PKG_SUFFIX=$(cd build/external/;git log --oneline v${PKG_VERSION}-rc0.. . | wc -l)
+            docker build . -f <<parameters.dockerfile>> \
+              -t <<parameters.tag>> \
+              --shm-size 1024m \
+              --target build \
+              --build-arg PKG_SUFFIX=${PKG_SUFFIX} \
+              --build-arg PKG_VERSION=${PKG_VERSION} \
+              --build-arg BUILD_IMAGE=<< parameters.build-image >> \
+              --build-arg BOOTSTRAP_CMD="<< parameters.bootstrap-cmd >>" \
+              --build-arg PKG_TYPE=<< parameters.pkg-type >> \
+              | ts -i "%.s" | ts -s "%H:%M:%.S"
+      - extract:
+          container: <<parameters.tag>>
+          srcdir: /vpp/build-root/.ccache
+          dstdir: ${HOME}/vpp/build-root/
+      - run:
+          name: ccache stats
+          command: |
+            export CCACHE_DIR=~/vpp/build-root/.ccache
+            ccache --show-stats
+      - save_cache:
+          key: ccache-{{ arch }}-{{.Environment.CIRCLE_JOB}}-{{epoch}}
+          paths:
+            - ~/vpp/build-root/.ccache
+      - extract:
+          container: <<parameters.tag>>
+          srcdir: /vpp/pkg
+          dstdir: ${HOME}/artifacts/
+      - store_artifacts:
+          path: ~/artifacts
 
-
+workflows:
+  build-and-test:
+    jobs:
+      - checkstyle
+      - build:
+          name: build-bionic
+          build-image: ubuntu:bionic
+          bootstrap-cmd: apt-get update && apt-get install -y make git sudo
+          requires:
+            - checkstyle
+      # - build:
+      #     name: build-centos7
+      #     build-image: centos:7.6.1810
+      #     bootstrap-cmd: yum install -y cmake make sudo git moreutils;mkdir -p /usr/lib;ln -s /usr/lib64/ccache /usr/lib/ccache
+      #     requires:
+      #       - checkstyle
+      # - build:
+      #     name: build-opensuse
+      #     build-image: opensuse/leap:15.0
+      #     bootstrap-cmd: zypper --non-interactive install make git sudo moreutils
+      #     requires:
+      #       - checkstyle
+      # - build:
+      #     name: build-arm-bionic
+      #     build-image: balenalib/aarch64-ubuntu:bionic-build
+      #     bootstrap-cmd: apt-get update && apt-get install -y make git sudo
+      #     crosscompile: true
+      #     requires:
+      #       - checkstyle
+      
