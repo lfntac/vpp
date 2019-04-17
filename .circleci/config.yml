@@ -27,14 +27,14 @@ jobs:
       - run: unzip terraform_0.11.13_linux_amd64.zip
       - run: mv terraform /go/bin/
       - run: mkdir terraform
-      - run: ssh-keygen -t rsa -f terraform/sshkey -q -N ""
-      - run: ssh-add terraform/sshkey
+      - run: ssh-keygen -t rsa -f ./.circleci/terraform/sshkey -q -N ""
+      - run: ssh-add ./.circleci/terraform/sshkey
       - run:
           name: Provision via terraform
           command: |
             export TF_VAR_auth_token="${PACKET_AUTH_TOKEN}"
             export TF_VAR_project_id="${PACKET_PROJECT_ID}"
-            export TF_VAR_public_key="${PWD}/terraform/sshkey.pub"
+            export TF_VAR_public_key="sshkey.pub"
             export TF_VAR_public_key_name="key-${CIRCLE_BUILD_NUM}"
             export TF_VAR_worker_hostname="ci-${CIRCLE_BUILD_NUM}-worker"
             pushd .circleci/terraform
