@@ -1,10 +1,7 @@
 variable "auth_token" {}
 variable "project_id" {}
 variable "public_key" {}
-variable "master1_hostname" {}
-variable "worker1_1_hostname" {}
-variable "master2_hostname" {}
-variable "worker2_1_hostname" {}
+variable "worker_hostname" {}
 variable "public_key_name" {}
 
 provider "packet" {
