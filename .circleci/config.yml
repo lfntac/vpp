@@ -32,12 +32,12 @@ jobs:
       - run:
           name: Provision via terraform
           command: |
+            pushd .circleci/terraform
             export TF_VAR_auth_token="${PACKET_AUTH_TOKEN}"
             export TF_VAR_project_id="${PACKET_PROJECT_ID}"
-            export TF_VAR_public_key="sshkey.pub"
+            export TF_VAR_public_key="${PWD}/sshkey.pub"
             export TF_VAR_public_key_name="key-${CIRCLE_BUILD_NUM}"
             export TF_VAR_worker_hostname="ci-${CIRCLE_BUILD_NUM}-worker"
-            pushd .circleci/terraform
             terraform init
             terraform apply -auto-approve
             popd
